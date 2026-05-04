@@ -1,3 +1,4 @@
+// zapytanie do API
 package com.example.planerpodrozy.api
 
 import retrofit2.http.Query

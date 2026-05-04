@@ -1,3 +1,4 @@
+// formularz dodawania/edytowania podróży
 package com.example.planerpodrozy.ui
 
 import android.os.Build
@@ -19,12 +20,13 @@ import com.example.planerpodrozy.model.Feature
 @Composable
 fun AddTravelScreen(
     viewModel: MainViewModel,
+    // null - nowa, nie null - edytuj
     travelToEdit: Travel? = null,
     onSave: (String, String, String, String, String) -> Unit,
     onBack: () -> Unit
 ) {
 
-
+    // dane formularza
     var name by remember { mutableStateOf(travelToEdit?.name ?: "") }
     var location by remember { mutableStateOf(travelToEdit?.location ?: "") }
     var description by remember { mutableStateOf(travelToEdit?.description ?: "") }
@@ -52,6 +54,7 @@ fun AddTravelScreen(
         )
         Spacer(Modifier.height(16.dp))
 
+        // pole z nazwą podróży
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -59,9 +62,11 @@ fun AddTravelScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // pole z lokalizacją
         Box {
             OutlinedTextField(
                 value = location,
+                // kiedy coś wpiszemy to pojawiają się propozycje
                 onValueChange = {
                     location = it
                     viewModel.searchPlaces(it)
@@ -73,6 +78,7 @@ fun AddTravelScreen(
 
             DropdownMenu(
                 expanded = expanded && places.isNotEmpty(),
+                // zamykanie, kiedy kliknie się poza listą
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -88,6 +94,7 @@ fun AddTravelScreen(
             }
         }
 
+        // pole na opis
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
@@ -97,7 +104,7 @@ fun AddTravelScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // ===== DATA START =====
+        // pole z datą rozpoczęcia
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,12 +121,14 @@ fun AddTravelScreen(
             Box(
                 modifier = Modifier
                     .matchParentSize()
+                    // po kliknięciu pokazuje się kalendarz
                     .clickable { showStartPicker = true }
             )
         }
 
         Spacer(Modifier.height(8.dp))
 
+        // pole z datą zakończenia
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -143,11 +152,13 @@ fun AddTravelScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // przycisk zapisz
         Button(
             onClick = {
                 val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull()
                 val end = runCatching { java.time.LocalDate.parse(endDate) }.getOrNull()
 
+                // sprawdzenie dat, czy koniec jest po początku
                 if (start != null && end != null && !start.isAfter(end)) {
                     onSave(name, location, description, startDate, endDate)
                 } else {
@@ -168,6 +179,7 @@ fun AddTravelScreen(
         }
     }
 
+    // kalendarz (rozpoczęcie)
     if (showStartPicker) {
         val state = rememberDatePickerState()
 
@@ -175,6 +187,7 @@ fun AddTravelScreen(
             onDismissRequest = { showStartPicker = false },
             confirmButton = {
                 Button(onClick = {
+                    // zamiana na tekst
                     startDate = state.selectedDateMillis?.let {
                         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                             .format(Date(it))
@@ -189,6 +202,7 @@ fun AddTravelScreen(
         }
     }
 
+    // kalendarz (zakończenie)
     if (showEndPicker) {
         val state = rememberDatePickerState()
 

@@ -9,8 +9,11 @@ import androidx.compose.runtime.*
 import androidx.room.Room
 import com.example.planerpodrozy.data.AppDatabase
 import com.example.planerpodrozy.data.Travel
+import com.example.planerpodrozy.ui.AddPlaceScreen
 import com.example.planerpodrozy.ui.AddTravelScreen
+import com.example.planerpodrozy.ui.DayDetailsScreen
 import com.example.planerpodrozy.ui.MainScreen
+import com.example.planerpodrozy.ui.TravelDetailsScreen
 import com.example.planerpodrozy.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
@@ -19,59 +22,109 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // tworzenie bazy danych
         val db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
             "travel_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
 
-        val viewModel = MainViewModel(db.travelDao())
+        val viewModel = MainViewModel(
+            db.travelDao(),
+            db.placeDao()
+        )
 
-
-
-        // pokazywanie ekranu
         setContent {
+
             var showAddScreen by remember { mutableStateOf(false) }
             var travelToEdit by remember { mutableStateOf<Travel?>(null) }
+            var selectedTravel by remember { mutableStateOf<Travel?>(null) }
+            var selectedDay by remember { mutableStateOf<String?>(null) }
+            var showAddPlaceScreen by remember { mutableStateOf(false) }
 
-            if (showAddScreen) {
-                AddTravelScreen(
-                    viewModel = viewModel,
-                    travelToEdit = travelToEdit,
-                    onSave = { name, location, desc, start, end ->
-
-                        if (travelToEdit == null) {
-                            viewModel.addTravel(name, location, desc, start, end)
-                        } else {
-                            viewModel.updateTravel(
-                                travelToEdit!!.copy(
-                                    name = name,
-                                    location = location,
-                                    description = desc,
-                                    startDate = start,
-                                    endDate = end
-                                )
+            when {
+                showAddPlaceScreen && selectedTravel != null && selectedDay != null -> {
+                    AddPlaceScreen(
+                        travelId = selectedTravel!!.id,
+                        date = selectedDay!!,
+                        viewModel = viewModel,
+                        onSave = { name, category, time ->
+                            viewModel.addPlace(
+                                travelId = selectedTravel!!.id,
+                                date = selectedDay!!,
+                                name = name,
+                                category = category,
+                                time = time
                             )
-                        }
+                            showAddPlaceScreen = false
+                        },
+                        onBack = { showAddPlaceScreen = false }
+                    )
+                }
 
-                        showAddScreen = false
-                        travelToEdit = null
-                    },
-                    onBack = {
-                        showAddScreen = false
-                        travelToEdit = null
-                    }
-                )
-            } else {
-                MainScreen(
-                    viewModel = viewModel,
-                    onAddClick = { showAddScreen = true },
-                    onEditClick = {
-                        travelToEdit = it
-                        showAddScreen = true
-                    }
-                )
+                selectedDay != null && selectedTravel != null -> {
+                    DayDetailsScreen(
+                        travel = selectedTravel!!,
+                        date = selectedDay!!,
+                        viewModel = viewModel,
+                        onBack = { selectedDay = null },
+                        onAddPlace = { showAddPlaceScreen = true }                    )
+                }
+
+                selectedTravel != null -> {
+                    TravelDetailsScreen(
+                        travel = selectedTravel!!,
+                        viewModel = viewModel,
+                        onBack = { selectedTravel = null },
+                        onDayClick = { selectedDay = it }
+                    )
+                }
+
+
+                showAddScreen -> {
+                    AddTravelScreen(
+                        viewModel = viewModel,
+                        travelToEdit = travelToEdit,
+                        onSave = { name, location, desc, start, end ->
+
+                            if (travelToEdit == null) {
+                                viewModel.addTravel(name, location, desc, start, end)
+                            } else {
+                                viewModel.updateTravel(
+                                    travelToEdit!!.copy(
+                                        name = name,
+                                        location = location,
+                                        description = desc,
+                                        startDate = start,
+                                        endDate = end
+                                    )
+                                )
+                            }
+
+                            showAddScreen = false
+                            travelToEdit = null
+                        },
+                        onBack = {
+                            showAddScreen = false
+                            travelToEdit = null
+                        }
+                    )
+                }
+
+                else -> {
+                    MainScreen(
+                        viewModel = viewModel,
+                        onAddClick = { showAddScreen = true },
+                        onEditClick = {
+                            travelToEdit = it
+                            showAddScreen = true
+                        },
+                        onTravelClick = {
+                            selectedTravel = it
+                        }
+                    )
+                }
             }
         }
     }

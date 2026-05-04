@@ -1,3 +1,4 @@
+// współrzędne geograficzne
 package com.example.planerpodrozy.model
 
 data class Geometry(

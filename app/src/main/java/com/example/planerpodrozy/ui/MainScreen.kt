@@ -1,5 +1,7 @@
+// ekran początkowy
 package com.example.planerpodrozy.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,9 +18,11 @@ import com.example.planerpodrozy.viewmodel.MainViewModel
 fun MainScreen(
     viewModel: MainViewModel,
     onAddClick: () -> Unit,
-    onEditClick: (Travel) -> Unit
+    onEditClick: (Travel) -> Unit,
+    onTravelClick: (Travel) -> Unit
 ){
 
+    // poiberanie danych
     val travels = viewModel.travels.collectAsState().value
 
     Column {
@@ -40,7 +44,9 @@ fun MainScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
+                        .padding(8.dp)
+                        .clickable {
+                            onTravelClick(travel)},
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
                     Column(Modifier.padding(12.dp)) {

@@ -1,14 +1,18 @@
+// tworzenie ViewModel
 package com.example.planerpodrozy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.planerpodrozy.data.PlaceDao
 import com.example.planerpodrozy.data.TravelDao
 
+// tworzy ViewModel i daje mu DAO
 class MainViewModelFactory(
-    private val dao: TravelDao
-) : androidx.lifecycle.ViewModelProvider.Factory {
+    private val travelDao: TravelDao,
+    private val placeDao: PlaceDao
+) : ViewModelProvider.Factory {
 
-    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-        return MainViewModel(dao) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return MainViewModel(travelDao, placeDao) as T
     }
 }

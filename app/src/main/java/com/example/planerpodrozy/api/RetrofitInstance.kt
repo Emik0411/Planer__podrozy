@@ -1,3 +1,4 @@
+// tworzy API, żeby móc używać w całej aplikacji
 package com.example.planerpodrozy.api
 
 import com.example.planerpodrozy.api.GeoapifyApi
@@ -8,6 +9,7 @@ object RetrofitInstance {
 
     private const val BASE_URL = "https://api.geoapify.com/"
 
+    // tworzy się tylko raz, wtedy kiedy jest potrzebne
     val api: GeoapifyApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)

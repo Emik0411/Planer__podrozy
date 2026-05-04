@@ -1,16 +1,15 @@
-// "jedna podróż"
 package com.example.planerpodrozy.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "travel")
-data class Travel(
+@Entity
+data class Place(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+    val travelId: Int,
+    val category: String,
+    val date: String,
     val name: String,
-    val location: String,
-    val description: String,
-    val startDate: String,
-    val endDate: String
+    val time: String
 )

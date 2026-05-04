@@ -1,3 +1,4 @@
+// operowanie na bazie
 package com.example.planerpodrozy.data
 
 import androidx.room.*
