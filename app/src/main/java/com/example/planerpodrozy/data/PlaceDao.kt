@@ -8,9 +8,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PlaceDao {
 
-    @Query("SELECT * FROM place WHERE travelId = :travelId AND date = :date")
-    fun getPlacesForDay(travelId: Int, date: String): Flow<List<Place>>
+    @Query("SELECT * FROM place WHERE travelId = :travelId AND date = :date ORDER BY time ASC")
+    fun getPlacesForDay(
+        travelId: Int,
+        date: String
+    ): Flow<List<Place>>
 
     @Insert
-    suspend fun insertPlace(place: Place)
+    suspend fun insert(place: Place)
 }

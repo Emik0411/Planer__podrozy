@@ -2,5 +2,9 @@
 package com.example.planerpodrozy.model
 
 data class Properties(
-    val formatted: String?
+    val name: String? = null,
+    val formatted: String? = null,
+    val address_line1: String? = null,
+    val city: String? = null,
+    val country: String? = null
 )

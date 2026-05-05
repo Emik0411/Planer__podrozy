@@ -1,116 +1,235 @@
 package com.example.planerpodrozy.ui
 
-import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.example.planerpodrozy.data.Place
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import com.example.planerpodrozy.viewmodel.MainViewModel
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.example.planerpodrozy.model.Category
+import com.example.planerpodrozy.model.Feature
+import com.example.planerpodrozy.model.categories
+import com.example.planerpodrozy.viewmodel.MainViewModel
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPlaceScreen(
     travelId: Int,
     date: String,
     viewModel: MainViewModel,
-    onSave: (String, String, String) -> Unit,
+    onSave: (String, String, String, Double, Double) -> Unit,
     onBack: () -> Unit
 ) {
+
+    val travel by viewModel.getTravelById(travelId).collectAsState(initial = null)
+
+
+    // w którym miejscu jesteśmy
+    var step by remember { mutableStateOf(1) }
+
+    var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    var selectedSubcategory by remember { mutableStateOf<String?>(null) }
+
+    var selectedFeature by remember { mutableStateOf<Feature?>(null) }
+
+    var suggestions by remember { mutableStateOf(listOf<Feature>()) }
+
     var name by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Zwiedzanie") }
+    var nameQuery by remember { mutableStateOf("") }
+
+    var manualMode by remember { mutableStateOf(false) }
+
     var time by remember { mutableStateOf("12:00") }
+
 
     Column(modifier = Modifier.padding(16.dp)) {
 
         Text("Dodaj atrakcję", style = MaterialTheme.typography.titleLarge)
-
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Nazwa miejsca") }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        CategoryDropdown(
-            selected = category,
-            onSelected = { category = it }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TimePickerField(
-            time = time,
-            onTimeSelected = { time = it }
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            onSave(name, category, time)
-        }) {
-            Text("Zapisz")
-        }
-    }
-}
 
-@Composable
-fun CategoryDropdown(
-    selected: String,
-    onSelected: (String) -> Unit
-) {
-    val categories = listOf("Zwiedzanie", "Jedzenie", "Relaks", "Rozrywka")
+        if (step == 1) {
 
-    var expanded by remember { mutableStateOf(false) }
+            Text("Wybierz kategorię")
 
-    Column {
-        Text("Kategoria")
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Box {
-            Text(
-                text = selected,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = true }
-                    .padding(12.dp)
-            )
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                categories.forEach {
-                    DropdownMenuItem(
-                        text = { Text(it) },
-                        onClick = {
-                            onSelected(it)
-                            expanded = false
+            categories.forEach { cat ->
+                Text(
+                    text = cat.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedCategory = cat
+                            step = 2
                         }
+                        .padding(12.dp)
+                )
+            }
+        }
+
+
+        if (step == 2) {
+
+            Text("Wybierz podkategorię")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            selectedCategory?.subcategories?.forEach { sub ->
+                Text(
+                    text = sub,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedSubcategory = sub
+                            step = 3
+                        }
+                        .padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(onClick = { step = 1 }) {
+                Text("Wstecz")
+            }
+        }
+
+
+        if (step == 3) {
+
+            LaunchedEffect(selectedSubcategory, travel?.id) {
+
+
+                if (selectedSubcategory == null) return@LaunchedEffect
+
+                viewModel.searchPlacesByCategory(
+                    category = selectedSubcategory!!,
+                    query = selectedSubcategory!!,
+                    location = "circle:52.2297,21.0122,20000"
+                ) { result ->
+                    suggestions = result
+                }
+            }
+
+            Text("Wybierz miejsce z listy")
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (suggestions.isNotEmpty()) {
+
+                suggestions.forEach { item ->
+                    Text(
+                        text = item.properties.formatted
+                            ?: item.properties.name
+                            ?: "Brak nazwy",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedFeature = item
+
+                                name = item.properties.formatted
+                                    ?: item.properties.name
+                                            ?: ""
+
+                                nameQuery = name
+                                step = 4
+                            }
+                            .padding(12.dp)
                     )
                 }
+
+            } else {
+                Text("Brak propozycji dla tej lokalizacji")
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "Nie ma na liście? Dodaj własne miejsce",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        manualMode = true
+                        selectedFeature = null
+                        name = nameQuery
+                        step = 4
+                    }
+                    .padding(12.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { step = 2 },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Wstecz")
+            }
+        }
+
+
+        if (step == 4) {
+
+            if (manualMode) {
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nazwa miejsca") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = nameQuery,
+                    onValueChange = { nameQuery = it },
+                    label = { Text("Adres / lokalizacja") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Text("Wybierz godzinę")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TimePickerField(
+                time = time,
+                onTimeSelected = { time = it }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onClick@{
+                    val finalCategory =
+                        selectedSubcategory
+                            ?: selectedCategory?.name
+                            ?: "Brak kategorii"
+
+                    val coords = selectedFeature?.geometry?.coordinates
+
+                    val lat = coords?.getOrNull(1)
+                    val lon = coords?.getOrNull(0)
+
+                    if (lat == null || lon == null) {
+                        return@onClick
+                    }
+                    onSave(name, finalCategory, time, lat, lon)
+                }
+            ) {
+                Text("Zapisz")
+            }
+
+
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(onClick = { step = 3
+                manualMode = false}) {
+                Text("Wstecz")
             }
         }
     }

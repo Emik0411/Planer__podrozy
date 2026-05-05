@@ -14,4 +14,12 @@ interface GeoapifyApi {
         @Query("limit") limit: Int = 5,
         @Query("lang") lang: String = "pl"
     ): PlaceResponse
+
+    @GET("v2/places")
+    suspend fun searchPlaces(
+        @Query("categories") categories: String,
+        @Query("filter") filter: String,
+        @Query("limit") limit: Int = 5,
+        @Query("apiKey") apiKey: String
+    ): PlaceResponse
 }

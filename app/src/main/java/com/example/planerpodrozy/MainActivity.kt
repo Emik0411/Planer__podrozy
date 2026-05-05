@@ -1,5 +1,6 @@
 package com.example.planerpodrozy
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,6 +16,8 @@ import com.example.planerpodrozy.ui.DayDetailsScreen
 import com.example.planerpodrozy.ui.MainScreen
 import com.example.planerpodrozy.ui.TravelDetailsScreen
 import com.example.planerpodrozy.viewmodel.MainViewModel
+import org.osmdroid.config.Configuration
+
 
 class MainActivity : ComponentActivity() {
 
@@ -35,6 +38,12 @@ class MainActivity : ComponentActivity() {
             db.placeDao()
         )
 
+
+        Configuration.getInstance().load(
+            applicationContext,
+            getSharedPreferences("osmdroid", MODE_PRIVATE)
+        )
+
         setContent {
 
             var showAddScreen by remember { mutableStateOf(false) }
@@ -49,17 +58,21 @@ class MainActivity : ComponentActivity() {
                         travelId = selectedTravel!!.id,
                         date = selectedDay!!,
                         viewModel = viewModel,
-                        onSave = { name, category, time ->
+                        onSave = { name, category, time, lat, lon ->
                             viewModel.addPlace(
                                 travelId = selectedTravel!!.id,
                                 date = selectedDay!!,
                                 name = name,
                                 category = category,
-                                time = time
+                                time = time,
+                                lat = lat,
+                                lon = lon
                             )
                             showAddPlaceScreen = false
                         },
-                        onBack = { showAddPlaceScreen = false }
+                        onBack = { showAddPlaceScreen = false
+                            selectedDay = null // opcjonalnie
+                        }
                     )
                 }
 
@@ -68,8 +81,13 @@ class MainActivity : ComponentActivity() {
                         travel = selectedTravel!!,
                         date = selectedDay!!,
                         viewModel = viewModel,
-                        onBack = { selectedDay = null },
-                        onAddPlace = { showAddPlaceScreen = true }                    )
+                        onBack = {
+                            selectedDay = null
+                        },
+                        onAddPlace = {
+                            showAddPlaceScreen = true
+                        }
+                    )
                 }
 
                 selectedTravel != null -> {
