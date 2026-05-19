@@ -58,13 +58,14 @@ class MainActivity : ComponentActivity() {
                         travelId = selectedTravel!!.id,
                         date = selectedDay!!,
                         viewModel = viewModel,
-                        onSave = { name, category, time, lat, lon ->
+                        onSave = { name, category, time, description, lat, lon ->
                             viewModel.addPlace(
                                 travelId = selectedTravel!!.id,
                                 date = selectedDay!!,
                                 name = name,
                                 category = category,
                                 time = time,
+                                description = description,
                                 lat = lat,
                                 lon = lon
                             )
@@ -104,10 +105,10 @@ class MainActivity : ComponentActivity() {
                     AddTravelScreen(
                         viewModel = viewModel,
                         travelToEdit = travelToEdit,
-                        onSave = { name, location, desc, start, end ->
+                        onSave = { name, location, desc, start, end, lat, lon ->
 
                             if (travelToEdit == null) {
-                                viewModel.addTravel(name, location, desc, start, end)
+                                viewModel.addTravel(name, location, desc, start, end, lat, lon)
                             } else {
                                 viewModel.updateTravel(
                                     travelToEdit!!.copy(
@@ -115,7 +116,9 @@ class MainActivity : ComponentActivity() {
                                         location = location,
                                         description = desc,
                                         startDate = start,
-                                        endDate = end
+                                        endDate = end,
+                                        lat = lat,
+                                        lon = lon
                                     )
                                 )
                             }

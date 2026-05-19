@@ -20,9 +20,8 @@ import com.example.planerpodrozy.model.Feature
 @Composable
 fun AddTravelScreen(
     viewModel: MainViewModel,
-    // null - nowa, nie null - edytuj
     travelToEdit: Travel? = null,
-    onSave: (String, String, String, String, String) -> Unit,
+    onSave: (String, String, String, String, String, Double?, Double?) -> Unit,
     onBack: () -> Unit
 ) {
 
@@ -41,6 +40,11 @@ fun AddTravelScreen(
     var showEndPicker by remember { mutableStateOf(false) }
 
     val places by viewModel.places.collectAsState()
+
+    var selectedLat by remember { mutableStateOf(travelToEdit?.lat ?: 0.0) }
+    var selectedLon by remember { mutableStateOf(travelToEdit?.lon ?: 0.0) }
+
+    var locationSelectedFromList by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -62,15 +66,22 @@ fun AddTravelScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+
+        Spacer(Modifier.height(16.dp))
+
         // pole z lokalizacją
         Box {
             OutlinedTextField(
                 value = location,
-                // kiedy coś wpiszemy to pojawiają się propozycje
                 onValueChange = {
                     location = it
                     viewModel.searchPlaces(it)
                     expanded = true
+
+                    locationSelectedFromList = false
+
+                    selectedLat = 0.0
+                    selectedLon = 0.0
                 },
                 label = { Text("Lokalizacja") },
                 modifier = Modifier.fillMaxWidth()
@@ -78,7 +89,6 @@ fun AddTravelScreen(
 
             DropdownMenu(
                 expanded = expanded && places.isNotEmpty(),
-                // zamykanie, kiedy kliknie się poza listą
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -87,12 +97,22 @@ fun AddTravelScreen(
                         text = { Text(place.properties.formatted.toString()) },
                         onClick = {
                             location = place.properties.formatted.toString()
+
+                            val coords = place.geometry?.coordinates
+                            selectedLon = coords?.getOrNull(0) ?: 0.0
+                            selectedLat = coords?.getOrNull(1) ?: 0.0
+
+                            locationSelectedFromList = true
+
                             expanded = false
                         }
                     )
                 }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+
 
         // pole na opis
         OutlinedTextField(
@@ -158,14 +178,47 @@ fun AddTravelScreen(
                 val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull()
                 val end = runCatching { java.time.LocalDate.parse(endDate) }.getOrNull()
 
-                // sprawdzenie dat, czy koniec jest po początku
                 if (start != null && end != null && !start.isAfter(end)) {
-                    onSave(name, location, description, startDate, endDate)
+
+                    if (locationSelectedFromList) {
+
+                        if (selectedLat == 0.0 && selectedLon == 0.0) {
+                            error = "Nie udało się pobrać współrzędnych"
+                            return@Button
+                        }
+
+                        onSave(
+                            name,
+                            location,
+                            description,
+                            startDate,
+                            endDate,
+                            selectedLat,
+                            selectedLon
+                        )
+                    }
+
+                    else {
+                        viewModel.getLatLonFromAddress(location) { lat, lon ->
+
+
+
+                            onSave(
+                                name,
+                                location,
+                                description,
+                                startDate,
+                                endDate,
+                                lat,
+                                lon
+                            )
+                        }
+                    }
+
                 } else {
                     error = "Złe daty"
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
+            }
         ) {
             Text("Zapisz")
         }

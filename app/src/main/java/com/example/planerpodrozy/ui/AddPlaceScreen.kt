@@ -17,7 +17,7 @@ fun AddPlaceScreen(
     travelId: Int,
     date: String,
     viewModel: MainViewModel,
-    onSave: (String, String, String, Double, Double) -> Unit,
+    onSave: (String, String, String, String, Double?, Double?) -> Unit,
     onBack: () -> Unit
 ) {
 
@@ -40,6 +40,12 @@ fun AddPlaceScreen(
     var manualMode by remember { mutableStateOf(false) }
 
     var time by remember { mutableStateOf("12:00") }
+
+    var description by remember { mutableStateOf("") }
+
+    var placeSelectedFromList by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+
 
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -97,33 +103,56 @@ fun AddPlaceScreen(
 
         if (step == 3) {
 
-            LaunchedEffect(selectedSubcategory, travel?.id) {
+            Text("Wpisz nazwę lub adres miejsca")
+            Spacer(modifier = Modifier.height(8.dp))
 
 
-                if (selectedSubcategory == null) return@LaunchedEffect
+            Box {
+                OutlinedTextField(
+                    value = nameQuery,
+                    onValueChange = {
+                        nameQuery = it
+                        name = it
 
-                viewModel.searchPlacesByCategory(
-                    category = selectedSubcategory!!,
-                    query = selectedSubcategory!!,
-                    location = "circle:52.2297,21.0122,20000"
-                ) { result ->
-                    suggestions = result
-                }
-            }
+                        // użytkownik wpisuje ręcznie
+                        placeSelectedFromList = false
+                        selectedFeature = null
 
-            Text("Wybierz miejsce z listy")
-            Spacer(modifier = Modifier.height(12.dp))
+                        if (it.length >= 3) {
+                            travel?.let { currentTravel ->
+                                viewModel.searchPlacesByCategory(
+                                    category = selectedSubcategory!!,
+                                    query = it,
+                                    travel = currentTravel
+                                ) { result ->
+                                    suggestions = result
+                                }
+                            }
+                        } else {
+                            suggestions = emptyList()
+                        }
+                    },
+                    label = { Text("Nazwa lub adres") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            if (suggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-                suggestions.forEach { item ->
-                    Text(
-                        text = item.properties.formatted
-                            ?: item.properties.name
-                            ?: "Brak nazwy",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
+                DropdownMenu(
+                    expanded = suggestions.isNotEmpty(),
+                    onDismissRequest = { suggestions = emptyList() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    suggestions.forEach { item ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    item.properties.formatted
+                                        ?: item.properties.name
+                                        ?: "Brak nazwy"
+                                )
+                            },
+                            onClick = {
                                 selectedFeature = item
 
                                 name = item.properties.formatted
@@ -131,33 +160,32 @@ fun AddPlaceScreen(
                                             ?: ""
 
                                 nameQuery = name
-                                step = 4
+
+                                // zaznaczamy że wybrano z listy
+                                placeSelectedFromList = true
+
+                                suggestions = emptyList()
                             }
-                            .padding(12.dp)
-                    )
+                        )
+                    }
                 }
-
-            } else {
-                Text("Brak propozycji dla tej lokalizacji")
             }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Nie ma na liście? Dodaj własne miejsce",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        manualMode = true
-                        selectedFeature = null
+            Button(
+                onClick = {
+                    if (nameQuery.isNotBlank()) {
                         name = nameQuery
+                        manualMode = !placeSelectedFromList
                         step = 4
                     }
-                    .padding(12.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Dalej")
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = { step = 2 },
@@ -168,7 +196,21 @@ fun AddPlaceScreen(
         }
 
 
+
         if (step == 4) {
+
+
+            Text("Opis atrakcji")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Opis") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (manualMode) {
 
@@ -209,15 +251,37 @@ fun AddPlaceScreen(
                             ?: selectedCategory?.name
                             ?: "Brak kategorii"
 
-                    val coords = selectedFeature?.geometry?.coordinates
+                    if (placeSelectedFromList) {
+                        val coords = selectedFeature?.geometry?.coordinates
 
-                    val lat = coords?.getOrNull(1)
-                    val lon = coords?.getOrNull(0)
+                        val lat = coords?.getOrNull(1)
+                        val lon = coords?.getOrNull(0)
 
-                    if (lat == null || lon == null) {
-                        return@onClick
+
+
+                        onSave(
+                            name,
+                            finalCategory,
+                            time,
+                            description,
+                            lat,
+                            lon
+                        )
                     }
-                    onSave(name, finalCategory, time, lat, lon)
+
+                    else {
+                        viewModel.getLatLonFromAddress(nameQuery) { lat, lon ->
+
+                            onSave(
+                                name,
+                                finalCategory,
+                                time,
+                                description,
+                                lat,
+                                lon
+                            )
+                        }
+                    }
                 }
             ) {
                 Text("Zapisz")
@@ -227,8 +291,10 @@ fun AddPlaceScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(onClick = { step = 3
-                manualMode = false}) {
+            Button(onClick = {
+                step = 3
+                manualMode = false
+            }) {
                 Text("Wstecz")
             }
         }

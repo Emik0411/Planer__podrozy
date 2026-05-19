@@ -12,5 +12,8 @@ data class Travel(
     val location: String,
     val description: String,
     val startDate: String,
-    val endDate: String
+    val endDate: String,
+
+    val lat: Double? = null,
+    val lon: Double? = null
 )

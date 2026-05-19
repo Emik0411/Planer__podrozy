@@ -22,4 +22,11 @@ interface GeoapifyApi {
         @Query("limit") limit: Int = 5,
         @Query("apiKey") apiKey: String
     ): PlaceResponse
+
+    @GET("v1/geocode/autocomplete")
+    suspend fun geocodeAddress(
+        @Query("text") text: String,
+        @Query("apiKey") apiKey: String,
+        @Query("limit") limit: Int = 1
+    ): PlaceResponse
 }

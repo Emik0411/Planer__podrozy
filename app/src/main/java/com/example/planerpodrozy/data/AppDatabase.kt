@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Travel::class, Place::class],
-    version = 7
+    version = 10
 )
 abstract class AppDatabase : RoomDatabase() {
 

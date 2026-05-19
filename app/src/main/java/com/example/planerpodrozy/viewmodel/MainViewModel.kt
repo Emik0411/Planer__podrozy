@@ -1,6 +1,7 @@
 // "mózg aplikacji"
 package com.example.planerpodrozy.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.planerpodrozy.api.RetrofitInstance
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
+
 
 class MainViewModel(
     private val dao: TravelDao,
@@ -32,7 +34,7 @@ class MainViewModel(
     val places: StateFlow<List<Feature>> = _places // dla UI
 
     // zapisywanie
-    fun addTravel(name: String, location: String, description: String, start: String, end: String) {
+    fun addTravel(name: String, location: String, description: String, start: String, end: String, lat: Double?, lon: Double?) {
         viewModelScope.launch {
             dao.insertTravel(
                 Travel(
@@ -40,7 +42,9 @@ class MainViewModel(
                     location = location,
                     description = description,
                     startDate = start,
-                    endDate = end
+                    endDate = end,
+                    lat = lat,
+                    lon = lon
                 )
             )
         }
@@ -91,8 +95,9 @@ class MainViewModel(
         name: String,
         category: String,
         time: String,
-        lat: Double,
-        lon: Double
+        description: String,
+        lat: Double?,
+        lon: Double?
     ) {
         viewModelScope.launch {
             placeDao.insert(
@@ -102,6 +107,7 @@ class MainViewModel(
                     name = name,
                     category = category,
                     time = time,
+                    description = description,
                     lat = lat,
                     lon = lon
                 )
@@ -117,10 +123,35 @@ class MainViewModel(
         return placeDao.getPlacesForDay(travelId, date)
     }
 
+    fun getLatLonFromAddress(
+        address: String,
+        onResult: (Double?, Double?) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.geocodeAddress(
+                    text = address,
+                    apiKey = "klucz"
+                )
+
+                val feature = response.features.firstOrNull()
+
+                val coords = feature?.geometry?.coordinates
+                val lon = coords?.getOrNull(0)
+                val lat = coords?.getOrNull(1)
+
+                onResult(lat, lon)
+
+            } catch (e: Exception) {
+                onResult(null, null)
+            }
+        }
+    }
+
     fun searchPlacesByCategory(
         category: String,
         query: String,
-        location: String,
+        travel: Travel,
         onResult: (List<Feature>) -> Unit
     ) {
         viewModelScope.launch {
@@ -130,18 +161,39 @@ class MainViewModel(
 
                 val response = RetrofitInstance.api.searchPlaces(
                     categories = mappedCategory,
-                    filter = "circle:21.0122,52.2297,5000",
-                    limit = 5,
+                    filter = "circle:${travel.lon},${travel.lat},20000",
+                    limit = 50,
                     apiKey = "klucz"
                 )
 
-                val filtered = response.features.filter {
-                    it.geometry != null &&
-                            (
-                                    !it.properties.name.isNullOrBlank() ||
-                                            !it.properties.formatted.isNullOrBlank()
-                                    )
-                }
+                val filtered = response.features
+                    .filter { it.geometry != null }
+                    .filter { feature ->
+
+                        val coords = feature.geometry?.coordinates ?: return@filter false
+                        val lon = coords.getOrNull(0) ?: return@filter false
+                        val lat = coords.getOrNull(1) ?: return@filter false
+
+                        val travelLat = travel.lat
+                        val travelLon = travel.lon
+
+                        if (travelLat == null || travelLon == null) {
+                            return@filter false
+                        }
+
+                        val distance = distanceKm(
+                            travelLat,
+                            travelLon,
+                            lat,
+                            lon
+                        )
+
+                        distance <= 20.0 && (
+                                feature.properties.name?.contains(query, true) == true ||
+                                        feature.properties.formatted?.contains(query, true) == true
+                                )
+                    }
+                    .take(5)
 
                 onResult(filtered)
 
@@ -163,7 +215,7 @@ private fun mapSubcategory(sub: String): String {
         "Kawiarnie" -> "catering.cafe"
         "Fast food" -> "catering.fast_food"
 
-        "Muzea" -> "tourism.museum"
+        "Muzea" -> "entertainment.museum"
         "Zabytki" -> "tourism.sights"
         "Kościoły" -> "religion.place_of_worship"
 
@@ -176,4 +228,25 @@ private fun mapSubcategory(sub: String): String {
 
         else -> "tourism"
     }
+}
+
+private fun distanceKm(
+    lat1: Double, lon1: Double,
+    lat2: Double, lon2: Double
+): Double {
+    val R = 6371.0
+
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+
+    val a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) *
+                Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2)
+
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c
 }

@@ -15,6 +15,8 @@ data class Place(
     val category: String,
     val time: String,
 
-    val lat: Double,
-    val lon: Double
+    val description: String = "",
+
+    val lat: Double? = null,
+    val lon: Double? = null
 )

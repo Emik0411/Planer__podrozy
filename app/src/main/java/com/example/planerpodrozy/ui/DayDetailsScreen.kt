@@ -39,17 +39,18 @@ fun DayDetailsScreen(
                 .height(250.dp),
             factory = { context ->
 
-                // płótno mapy
                 val mapView = MapView(context)
 
-                // obsługa gestów
                 mapView.setMultiTouchControls(true)
 
                 val controller = mapView.controller
                 controller.setZoom(10.0)
 
-                // fallback (Warszawa)
-                val startPoint = GeoPoint(52.2297, 21.0122)
+                val startPoint = if (travel.lat != null && travel.lon != null) {
+                    GeoPoint(travel.lat, travel.lon)
+                } else {
+                    GeoPoint(52.2297, 21.0122)
+                }
                 controller.setCenter(startPoint)
 
                 mapView
@@ -62,7 +63,15 @@ fun DayDetailsScreen(
                 // rysowanie każdej pinezki
                 places.forEach { place ->
 
-                    val point = GeoPoint(place.lat, place.lon)
+                    val lat = place.lat
+                    val lon = place.lon
+
+                    // jeśli brak współrzędnych, nie pokazujemy na mapie
+                    if (lat == null || lon == null) {
+                        return@forEach
+                    }
+
+                    val point = GeoPoint(lat, lon)
 
                     val marker = Marker(mapView)
                     marker.position = point
@@ -72,12 +81,19 @@ fun DayDetailsScreen(
                     mapView.overlays.add(marker)
                 }
 
-                // ustaw kamerę na pierwszy punkt
-                if (places.isNotEmpty()) {
-                    val first = places.first()
+                val firstWithCoordinates = places.firstOrNull {
+                    it.lat != null && it.lon != null
+                }
+
+                if (firstWithCoordinates != null) {
                     val controller = mapView.controller
                     controller.setZoom(12.0)
-                    controller.setCenter(GeoPoint(first.lat, first.lon))
+                    controller.setCenter(
+                        GeoPoint(
+                            firstWithCoordinates.lat!!,
+                            firstWithCoordinates.lon!!
+                        )
+                    )
                 }
 
                 mapView.invalidate()
@@ -132,10 +148,20 @@ fun DayDetailsScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
 
+                        if (place.description.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = place.description,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
                         Text(
                             text = place.category,
                             style = MaterialTheme.typography.bodySmall
                         )
+
+
                     }
 
                     Divider()
