@@ -62,6 +62,8 @@ dependencies {
 
     implementation("org.osmdroid:osmdroid-android:6.1.16")
 
+    implementation("org.maplibre.gl:android-sdk:11.7.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

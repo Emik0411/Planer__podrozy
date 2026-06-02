@@ -1,6 +1,5 @@
 // formularz dodawania/edytowania podróży
 package com.example.planerpodrozy.ui
-
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
@@ -14,6 +13,12 @@ import com.example.planerpodrozy.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.planerpodrozy.model.Feature
+import androidx.compose.ui.viewinterop.AndroidView
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.annotations.MarkerOptions
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,13 +30,12 @@ fun AddTravelScreen(
     onBack: () -> Unit
 ) {
 
-    // dane formularza
+
     var name by remember { mutableStateOf(travelToEdit?.name ?: "") }
     var location by remember { mutableStateOf(travelToEdit?.location ?: "") }
     var description by remember { mutableStateOf(travelToEdit?.description ?: "") }
     var startDate by remember { mutableStateOf(travelToEdit?.startDate ?: "") }
     var endDate by remember { mutableStateOf(travelToEdit?.endDate ?: "") }
-
 
     var expanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
@@ -46,6 +50,13 @@ fun AddTravelScreen(
 
     var locationSelectedFromList by remember { mutableStateOf(false) }
 
+    var step by remember { mutableStateOf(1) }
+    var showMapPreview by remember { mutableStateOf(false) }
+
+    var refineMode by remember { mutableStateOf(false) }
+    var refineText by remember { mutableStateOf("") }
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -56,175 +67,297 @@ fun AddTravelScreen(
             if (travelToEdit == null) "Dodaj podróż" else "Edytuj podróż",
             style = MaterialTheme.typography.headlineMedium
         )
-        Spacer(Modifier.height(16.dp))
-
-        // pole z nazwą podróży
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Nazwa") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
 
         Spacer(Modifier.height(16.dp))
 
-        // pole z lokalizacją
-        Box {
-            OutlinedTextField(
-                value = location,
-                onValueChange = {
-                    location = it
-                    viewModel.searchPlaces(it)
-                    expanded = true
 
-                    locationSelectedFromList = false
+        if (step == 1) {
 
-                    selectedLat = 0.0
-                    selectedLon = 0.0
+            Text("Wybierz lokalizację")
+            Spacer(Modifier.height(12.dp))
+
+
+
+            Box {
+
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = {
+                        location = it
+                        viewModel.searchPlaces(it)
+                        expanded = true
+
+                        locationSelectedFromList = false
+                        selectedLat = 0.0
+                        selectedLon = 0.0
+                        showMapPreview = false
+                    },
+                    label = { Text("Lokalizacja") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                DropdownMenu(
+                    expanded = expanded && places.isNotEmpty(),
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    places.forEach { place ->
+                        DropdownMenuItem(
+                            text = { Text(place.properties.formatted ?: "") },
+                            onClick = {
+                                location = place.properties.formatted ?: ""
+
+                                val coords = place.geometry?.coordinates
+                                selectedLon = coords?.getOrNull(0) ?: 0.0
+                                selectedLat = coords?.getOrNull(1) ?: 0.0
+
+                                locationSelectedFromList = true
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Button(
+                onClick = { refineMode = !refineMode },
+                        modifier = Modifier.fillMaxWidth()
+
+            ) {
+                Text(if (refineMode) "Niedoprecyzuj" else "Doprecyzuj")
+            }
+
+            if (refineMode) {
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = refineText,
+                    onValueChange = { refineText = it },
+                    label = { Text("Doprecyzuj") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+
+                    val base = location.trim()
+                    val refine = refineText.trim()
+
+                    val query = if (refineMode && refine.isNotBlank()) {
+                        "$base, $refine"
+                    } else {
+                        base
+                    }
+
+                    if (query.isBlank()) return@Button
+
+                    showMapPreview = false
+
+                    viewModel.getLatLonFromAddress(query) { lat, lon ->
+                        selectedLat = lat ?: 0.0
+                        selectedLon = lon ?: 0.0
+                        showMapPreview = true
+                    }
                 },
-                label = { Text("Lokalizacja") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            DropdownMenu(
-                expanded = expanded && places.isNotEmpty(),
-                onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                places.forEach { place ->
-                    DropdownMenuItem(
-                        text = { Text(place.properties.formatted.toString()) },
-                        onClick = {
-                            location = place.properties.formatted.toString()
+                Text("Sprawdź na mapie")
+            }
 
-                            val coords = place.geometry?.coordinates
-                            selectedLon = coords?.getOrNull(0) ?: 0.0
-                            selectedLat = coords?.getOrNull(1) ?: 0.0
+            Spacer(Modifier.height(20.dp))
 
-                            locationSelectedFromList = true
+            Button(
+                onClick = {
+                    if (location.isNotBlank()) {
 
-                            expanded = false
+                        if (!locationSelectedFromList) {
+                            val query = if (refineMode && refineText.isNotBlank()) {
+                                "$location, $refineText"
+                            } else {
+                                location
+                            }
+
+                            viewModel.getLatLonFromAddress(query) { lat, lon ->
+                                selectedLat = lat ?: 0.0
+                                selectedLon = lon ?: 0.0
+                            }
                         }
-                    )
-                }
+
+                        step = 2
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Dalej")
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Button(onClick ={ onBack()},
+                modifier = Modifier.fillMaxWidth()
+            ){
+                Text("Wstecz")
+            }
+
+
+            if (showMapPreview) {
+
+                Spacer(Modifier.height(12.dp))
+
+
+
+                Spacer(Modifier.height(12.dp))
+
+                AndroidView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    factory = { context ->
+
+                        val mapView = MapView(context).apply {
+                            onCreate(null)
+                            onStart()
+                        }
+
+                        mapView.getMapAsync { map ->
+
+                            map.setStyle(
+                                "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                            ) {
+
+                                val point = LatLng(selectedLat, selectedLon)
+
+                                map.cameraPosition =
+                                    org.maplibre.android.camera.CameraPosition.Builder()
+                                        .target(point)
+                                        .zoom(10.0)
+                                        .build()
+
+                                map.clear()
+
+                                map.addMarker(
+                                    MarkerOptions()
+                                        .position(point)
+                                        .title(location)
+                                )
+                            }
+                        }
+
+                        mapView
+                    },
+                    update = {}
+                )
             }
         }
 
-        Spacer(Modifier.height(16.dp))
 
+        if (step == 2) {
 
-        // pole na opis
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Opis") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        // pole z datą rozpoczęcia
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = startDate,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Data rozpoczęcia") },
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Nazwa") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    // po kliknięciu pokazuje się kalendarz
-                    .clickable { showStartPicker = true }
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // pole z datą zakończenia
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = endDate,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Data zakończenia") },
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Opis") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable { showEndPicker = true }
-            )
-        }
+            Spacer(Modifier.height(12.dp))
 
 
-        Spacer(Modifier.height(16.dp))
+            Box {
+                OutlinedTextField(
+                    value = startDate,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data rozpoczęcia") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-        // przycisk zapisz
-        Button(
-            onClick = {
-                val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull()
-                val end = runCatching { java.time.LocalDate.parse(endDate) }.getOrNull()
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { showStartPicker = true }
+                )
+            }
 
-                if (start != null && end != null && !start.isAfter(end)) {
+            Spacer(Modifier.height(12.dp))
 
-                    if (locationSelectedFromList) {
 
-                        if (selectedLat == 0.0 && selectedLon == 0.0) {
-                            error = "Nie udało się pobrać współrzędnych"
-                            return@Button
+            Box {
+                OutlinedTextField(
+                    value = endDate,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data zakończenia") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { showEndPicker = true }
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+
+                    val start = runCatching { java.time.LocalDate.parse(startDate) }.getOrNull()
+                    val end = runCatching { java.time.LocalDate.parse(endDate) }.getOrNull()
+
+                    if (start != null && end != null && !start.isAfter(end)) {
+
+                        val base = location.trim()
+                        val refine = refineText.trim()
+
+                        val finalQuery = if (refineMode && refine.isNotBlank()) {
+                            "$base"
+                        } else {
+                            base
                         }
 
                         onSave(
                             name,
-                            location,
+                            finalQuery,
                             description,
                             startDate,
                             endDate,
                             selectedLat,
                             selectedLon
                         )
+
+                    } else {
+                        error = "Złe daty"
                     }
-
-                    else {
-                        viewModel.getLatLonFromAddress(location) { lat, lon ->
-
-
-
-                            onSave(
-                                name,
-                                location,
-                                description,
-                                startDate,
-                                endDate,
-                                lat,
-                                lon
-                            )
-                        }
-                    }
-
-                } else {
-                    error = "Złe daty"
-                }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Zapisz")
             }
-        ) {
-            Text("Zapisz")
-        }
 
-        TextButton(onClick = onBack) {
-            Text("Wróć")
+            Button(
+                onClick = { step = 1 },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Wstecz")
+            }
         }
 
         if (error.isNotEmpty()) {
@@ -232,7 +365,7 @@ fun AddTravelScreen(
         }
     }
 
-    // kalendarz (rozpoczęcie)
+
     if (showStartPicker) {
         val state = rememberDatePickerState()
 
@@ -240,10 +373,8 @@ fun AddTravelScreen(
             onDismissRequest = { showStartPicker = false },
             confirmButton = {
                 Button(onClick = {
-                    // zamiana na tekst
                     startDate = state.selectedDateMillis?.let {
-                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(Date(it))
+                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it))
                     } ?: ""
                     showStartPicker = false
                 }) {
@@ -255,7 +386,6 @@ fun AddTravelScreen(
         }
     }
 
-    // kalendarz (zakończenie)
     if (showEndPicker) {
         val state = rememberDatePickerState()
 
@@ -264,8 +394,7 @@ fun AddTravelScreen(
             confirmButton = {
                 Button(onClick = {
                     endDate = state.selectedDateMillis?.let {
-                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(Date(it))
+                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it))
                     } ?: ""
                     showEndPicker = false
                 }) {

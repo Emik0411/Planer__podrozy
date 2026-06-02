@@ -148,6 +148,26 @@ class MainViewModel(
         }
     }
 
+    private val _geoResults = MutableStateFlow<List<Feature>>(emptyList())
+    val geoResults: StateFlow<List<Feature>> = _geoResults
+
+    fun searchGeoCandidates(address: String) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.api.geocodeAddress(
+                    text = address,
+                    apiKey = "klucz"
+                )
+
+
+                _geoResults.value = response.features.take(5)
+
+            } catch (e: Exception) {
+                _geoResults.value = emptyList()
+            }
+        }
+    }
+
     fun searchPlacesByCategory(
         category: String,
         query: String,

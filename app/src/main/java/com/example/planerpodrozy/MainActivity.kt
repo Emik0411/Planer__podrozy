@@ -1,12 +1,14 @@
 package com.example.planerpodrozy
 
-import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.room.Room
 import com.example.planerpodrozy.data.AppDatabase
 import com.example.planerpodrozy.data.Travel
@@ -17,6 +19,8 @@ import com.example.planerpodrozy.ui.MainScreen
 import com.example.planerpodrozy.ui.TravelDetailsScreen
 import com.example.planerpodrozy.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
+import org.maplibre.android.MapLibre
+import org.maplibre.android.WellKnownTileServer
 
 
 class MainActivity : ComponentActivity() {
@@ -24,6 +28,8 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
 
         val db = Room.databaseBuilder(
             applicationContext,
@@ -134,6 +140,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 else -> {
+
                     MainScreen(
                         viewModel = viewModel,
                         onAddClick = { showAddScreen = true },

@@ -50,6 +50,8 @@ fun AddPlaceScreen(
 
     Column(modifier = Modifier.padding(16.dp)) {
 
+
+
         Text("Dodaj atrakcję", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -71,6 +73,15 @@ fun AddPlaceScreen(
                         }
                         .padding(12.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = { onBack() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cofnij")
             }
         }
 
