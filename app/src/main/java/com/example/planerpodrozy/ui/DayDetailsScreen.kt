@@ -12,9 +12,13 @@ import com.example.planerpodrozy.data.Travel
 import com.example.planerpodrozy.viewmodel.MainViewModel
 import android.view.ViewGroup
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.planerpodrozy.data.Place
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 
 @Composable
 fun DayDetailsScreen(
@@ -29,6 +33,9 @@ fun DayDetailsScreen(
         .getPlacesForDay(travel.id, date)
         .collectAsState(initial = emptyList())
 
+    var isMapReady by remember { mutableStateOf(false) }
+    var lastPlaces by remember { mutableStateOf<List<Place>>(emptyList()) }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
 
@@ -39,12 +46,28 @@ fun DayDetailsScreen(
                 .height(250.dp),
             factory = { context ->
 
-                val mapView = MapView(context)
+                val tileSource = XYTileSource(
+                    "CartoDBVoyager",
+                    0,
+                    20,
+                    256,
+                    ".png",
+                    arrayOf(
+                        "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+                        "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+                        "https://c.basemaps.cartocdn.com/rastertiles/voyager/"
+                    )
+                )
+
+                val mapView = MapView(context).apply {
+                    setTileSource(tileSource)
+                    setMultiTouchControls(true)
+                }
 
                 mapView.setMultiTouchControls(true)
 
                 val controller = mapView.controller
-                controller.setZoom(10.0)
+                controller.setZoom(14.0)
 
                 val startPoint = if (travel.lat != null && travel.lon != null) {
                     GeoPoint(travel.lat, travel.lon)
@@ -57,19 +80,19 @@ fun DayDetailsScreen(
             },
             update = { mapView ->
 
-                // czyszczenie
+                if (places == lastPlaces) return@AndroidView
+                lastPlaces = places
+
                 mapView.overlays.clear()
 
-                // rysowanie każdej pinezki
-                places.forEach { place ->
+                val linePoints = ArrayList<GeoPoint>()
+
+                for (place in places) {
 
                     val lat = place.lat
                     val lon = place.lon
 
-                    // jeśli brak współrzędnych, nie pokazujemy na mapie
-                    if (lat == null || lon == null) {
-                        return@forEach
-                    }
+                    if (lat == null || lon == null) continue
 
                     val point = GeoPoint(lat, lon)
 
@@ -79,28 +102,31 @@ fun DayDetailsScreen(
                     marker.title = place.name
 
                     mapView.overlays.add(marker)
+
+                    linePoints.add(point)
                 }
 
-                val firstWithCoordinates = places.firstOrNull {
-                    it.lat != null && it.lon != null
+                if (linePoints.size > 1) {
+                    val polyline = Polyline().apply {
+                        setPoints(linePoints)
+                        color = android.graphics.Color.BLUE
+                        width = 5f
+                    }
+                    mapView.overlays.add(polyline)
                 }
 
-                if (firstWithCoordinates != null) {
-                    val controller = mapView.controller
-                    controller.setZoom(12.0)
-                    controller.setCenter(
-                        GeoPoint(
-                            firstWithCoordinates.lat!!,
-                            firstWithCoordinates.lon!!
-                        )
-                    )
+                val first = places.firstOrNull { it.lat != null && it.lon != null }
+
+                if (first != null && first.lat != null && first.lon != null) {
+                    mapView.controller.setZoom(14.0)
+                    mapView.controller.setCenter(GeoPoint(first.lat, first.lon))
                 }
 
                 mapView.invalidate()
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = onAddPlace,
             modifier = Modifier
@@ -109,7 +135,7 @@ fun DayDetailsScreen(
         ) {
             Text("Dodaj atrakcję")
         }
-        Spacer(modifier = Modifier.height(16.dp))
+      //  Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onBack,
             modifier = Modifier

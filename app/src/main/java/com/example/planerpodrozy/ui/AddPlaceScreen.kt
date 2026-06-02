@@ -200,17 +200,7 @@ fun AddPlaceScreen(
         if (step == 4) {
 
 
-            Text("Opis atrakcji")
-            Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Opis") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             if (manualMode) {
 
@@ -232,6 +222,18 @@ fun AddPlaceScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+
+            Text("Opis atrakcji")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Opis") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text("Wybierz godzinę")
             Spacer(modifier = Modifier.height(8.dp))
