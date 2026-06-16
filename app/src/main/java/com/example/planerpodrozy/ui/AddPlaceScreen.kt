@@ -118,14 +118,14 @@ fun AddPlaceScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
 
-            Box {
+            Column {
+
                 OutlinedTextField(
                     value = nameQuery,
                     onValueChange = {
                         nameQuery = it
                         name = it
 
-                        // użytkownik wpisuje ręcznie
                         placeSelectedFromList = false
                         selectedFeature = null
 
@@ -147,39 +147,45 @@ fun AddPlaceScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (suggestions.isNotEmpty()) {
 
-                DropdownMenu(
-                    expanded = suggestions.isNotEmpty(),
-                    onDismissRequest = { suggestions = emptyList() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    suggestions.forEach { item ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    item.properties.formatted
-                                        ?: item.properties.name
-                                        ?: "Brak nazwy"
-                                )
-                            },
-                            onClick = {
-                                selectedFeature = item
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
 
-                                name = item.properties.formatted
+                        suggestions.take(5).forEach { item ->
+
+                            Text(
+                                text = item.properties.formatted
                                     ?: item.properties.name
-                                            ?: ""
+                                    ?: "Brak nazwy",
 
-                                nameQuery = name
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
 
-                                // zaznaczamy że wybrano z listy
-                                placeSelectedFromList = true
+                                        selectedFeature = item
 
-                                suggestions = emptyList()
-                            }
-                        )
+                                        name = item.properties.formatted
+                                            ?: item.properties.name
+                                                    ?: ""
+
+                                        nameQuery = name
+
+                                        placeSelectedFromList = true
+
+                                        suggestions = emptyList()
+                                    }
+                                    .padding(12.dp)
+                            )
+
+                            HorizontalDivider()
+                        }
                     }
                 }
+
             }
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -1,6 +1,5 @@
 package com.example.planerpodrozy.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,16 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.planerpodrozy.data.Travel
 import com.example.planerpodrozy.viewmodel.MainViewModel
-import android.view.ViewGroup
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.planerpodrozy.data.Place
 
-import org.maplibre.android.maps.Style
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.annotations.MarkerOptions
-import org.maplibre.android.annotations.Marker
 import org.maplibre.android.maps.MapLibreMap
 
 @Composable
@@ -35,12 +31,17 @@ fun DayDetailsScreen(
         .getPlacesForDay(travel.id, date)
         .collectAsState(initial = emptyList())
 
-    var showMap by remember { mutableStateOf(false) } // domyślnie LISTA
+    val notes by viewModel
+        .getDiaryNotes(travel.id, date)
+        .collectAsState(initial = emptyList())
 
-    var mapRef by remember { mutableStateOf<org.maplibre.android.maps.MapLibreMap?>(null) }
+    var newNote by remember { mutableStateOf("") }
+
+    var showMap by remember { mutableStateOf(false) }
+
+    var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-
 
         Row(
             modifier = Modifier
@@ -48,23 +49,18 @@ fun DayDetailsScreen(
                 .padding(8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Button(
-                onClick = { showMap = false }
-            ) {
+            Button(onClick = { showMap = false }) {
                 Text("Lista")
             }
 
-            Button(
-                onClick = { showMap = true }
-            ) {
+            Button(onClick = { showMap = true }) {
                 Text("Mapa")
             }
         }
 
-
         if (showMap) {
 
-            Box {
+            Box(modifier = Modifier.fillMaxSize()) {
 
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
@@ -130,13 +126,11 @@ fun DayDetailsScreen(
                     }
                 )
 
-
                 Column(
                     modifier = Modifier
                         .padding(12.dp)
                         .align(androidx.compose.ui.Alignment.TopEnd)
                 ) {
-
                     Button(onClick = {
                         mapRef?.animateCamera(CameraUpdateFactory.zoomIn())
                     }) {
@@ -154,41 +148,41 @@ fun DayDetailsScreen(
             }
         }
 
+        else {
 
-        if (!showMap) {
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = onAddPlace,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp)
             ) {
-                Text("Dodaj atrakcję")
-            }
 
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text("Wstecz")
-            }
+                // ===== BUTTONY =====
+                item {
+                    Button(
+                        onClick = onAddPlace,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Dodaj atrakcję")
+                    }
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                item {
+                    Button(
+                        onClick = onBack,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Wstecz")
+                    }
+                }
 
-            if (places.isEmpty()) {
-                Text(
-                    text = "Brak atrakcji tego dnia",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (places.isEmpty()) {
+                    item {
+                        Text("Brak atrakcji tego dnia")
+                    }
+                } else {
                     items(places) { place ->
 
                         Column(
@@ -196,29 +190,76 @@ fun DayDetailsScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-
-                            Text(
-                                text = place.name,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            Text(
-                                text = place.time,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Text(place.name, style = MaterialTheme.typography.titleMedium)
+                            Text(place.time)
 
                             if (place.description.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(place.description)
                             }
 
-                            Text(
-                                text = place.category,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Text(place.category)
                         }
 
                         Divider()
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Dziennik podróży",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {Spacer(modifier = Modifier.height(16.dp))}
+
+                item {
+                    OutlinedTextField(
+                        value = newNote,
+                        onValueChange = { newNote = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Napisz notatkę...") }
+                    )
+                }
+
+                item {
+                    Button(
+                        onClick = {
+                            if (newNote.isNotBlank()) {
+                                viewModel.addDiaryNote(
+                                    travel.id,
+                                    date,
+                                    newNote
+                                )
+                                newNote = ""
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Dodaj notatkę")
+                    }
+                }
+
+
+                items(notes) { note ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(note.text)
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = java.text.SimpleDateFormat("HH:mm")
+                                    .format(java.util.Date(note.createdAt)),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }

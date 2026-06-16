@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.planerpodrozy.api.RetrofitInstance
+import com.example.planerpodrozy.data.DiaryNote
+import com.example.planerpodrozy.data.DiaryNoteDao
 import com.example.planerpodrozy.data.Place
 import com.example.planerpodrozy.data.PlaceDao
 import com.example.planerpodrozy.data.Travel
@@ -20,7 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainViewModel(
     private val dao: TravelDao,
-    private val placeDao: PlaceDao
+    private val placeDao: PlaceDao,
+    private val diaryDao: DiaryNoteDao
+
 
 ) : ViewModel() {
 
@@ -168,6 +172,22 @@ class MainViewModel(
         }
     }
 
+    fun getDiaryNotes(travelId: Int, date: String): Flow<List<DiaryNote>> {
+        return diaryDao.getNotes(travelId, date)
+    }
+
+    fun addDiaryNote(travelId: Int, date: String, text: String) {
+        viewModelScope.launch {
+            diaryDao.insert(
+                DiaryNote(
+                    travelId = travelId,
+                    date = date,
+                    text = text
+                )
+            )
+        }
+    }
+
     fun searchPlacesByCategory(
         category: String,
         query: String,
@@ -183,7 +203,7 @@ class MainViewModel(
                     categories = mappedCategory,
                     filter = "circle:${travel.lon},${travel.lat},20000",
                     limit = 50,
-                    apiKey = "klucz"
+                    apiKey = "aa30ac19f2824261b86d1984b4d7c3dc"
                 )
 
                 val filtered = response.features

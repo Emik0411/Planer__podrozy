@@ -56,6 +56,8 @@ fun AddTravelScreen(
     var refineMode by remember { mutableStateOf(false) }
     var refineText by remember { mutableStateOf("") }
 
+    var locationChanged by remember { mutableStateOf(false) }
+
 
     Column(
         modifier = Modifier
@@ -84,6 +86,9 @@ fun AddTravelScreen(
                     value = location,
                     onValueChange = {
                         location = it
+
+                        locationChanged = true
+
                         viewModel.searchPlaces(it)
                         expanded = true
 
@@ -145,6 +150,14 @@ fun AddTravelScreen(
 
             Button(
                 onClick = {
+
+
+                    if (travelToEdit != null && !locationChanged) {
+                        selectedLat = travelToEdit.lat ?: 0.0
+                        selectedLon = travelToEdit.lon ?: 0.0
+                        showMapPreview = true
+                        return@Button
+                    }
 
                     val base = location.trim()
                     val refine = refineText.trim()

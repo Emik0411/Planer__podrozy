@@ -7,16 +7,12 @@ import androidx.room.PrimaryKey
 data class Place(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-
     val travelId: Int,
     val date: String,
-
     val name: String,
     val category: String,
     val time: String,
-
     val description: String = "",
-
     val lat: Double? = null,
     val lon: Double? = null
 )

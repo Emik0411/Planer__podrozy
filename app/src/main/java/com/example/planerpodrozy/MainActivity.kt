@@ -21,6 +21,8 @@ import com.example.planerpodrozy.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
+import com.example.planerpodrozy.data.DiaryNote
+
 
 
 class MainActivity : ComponentActivity() {
@@ -41,7 +43,8 @@ class MainActivity : ComponentActivity() {
 
         val viewModel = MainViewModel(
             db.travelDao(),
-            db.placeDao()
+            db.placeDao(),
+            db.diaryNoteDao()
         )
 
 
